@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Cyber Threat Intelligence Dashboard</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: "Segoe UI", sans-serif;
+    background: #0b1220;
+    color: #e2e8f0;
+}
+
+/* Layout */
+.wrapper {
+    display: flex;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 220px;
+    height: 100vh;
+    background: #020617;
+    padding: 20px;
+}
+
+.sidebar h2 {
+    font-size: 18px;
+    margin-bottom: 30px;
+}
+
+.sidebar p {
+    opacity: 0.7;
+}
+
+/* Main */
+.main {
+    flex: 1;
+    padding: 40px;
+}
+
+/* Card */
+.card {
+    background: #111827;
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.4);
+}
+
+/* Input */
+input {
+    width: 75%;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background: #020617;
+    color: white;
+}
+
+button {
+    padding: 12px 18px;
+    border-radius: 8px;
+    border: none;
+    background: #2563eb;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #1d4ed8;
+}
+
+/* Status Colors */
+.safe { color: #22c55e; }
+.phishing { color: #ef4444; }
+.suspicious { color: #f59e0b; }
+
+/* Risk Bar */
+.bar {
+    height: 8px;
+    background: #1e293b;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+.fill {
+    height: 100%;
+    border-radius: 5px;
+}
+
+/* Table */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+td {
+    padding: 10px;
+    border-bottom: 1px solid #1e293b;
+    font-size: 14px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="wrapper">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>Cyber Panel</h2>
+        <p>Threat Detection</p>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+
+        <!-- Scan Card -->
+        <div class="card">
+            <h3>URL Analysis</h3>
+
+            <input id="url" placeholder="Enter URL">
+            <button onclick="scan()">Scan</button>
+
+            <p id="status"></p>
+
+            <h3 id="result"></h3>
+            <p id="confidence"></p>
+            <p id="details"></p>
+
+            <div class="bar">
+                <div id="riskBar" class="fill"></div>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="card">
+            <h3>Scan History</h3>
+            <table id="historyTable"></table>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+let historyData = [];
+
+function scan() {
+    let url = document.getElementById("url").value;
+
+    document.getElementById("status").innerText = "Analyzing...";
+    document.getElementById("result").innerText = "";
+
+    fetch("http://127.0.0.1:5000/predict", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({url: url})
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        document.getElementById("status").innerText = "";
+
+        let result = data.result;
+        let risk = data.risk_score || data.confidence;
+
+        let resultEl = document.getElementById("result");
+        let bar = document.getElementById("riskBar");
+
+        // Color logic
+        if(result.includes("Safe")) {
+            resultEl.className = "safe";
+            bar.style.background = "#22c55e";
+        }
+        else if(result.includes("Phishing")) {
+            resultEl.className = "phishing";
+            bar.style.background = "#ef4444";
+        }
+        else {
+            resultEl.className = "suspicious";
+            bar.style.background = "#f59e0b";
+        }
+
+        resultEl.innerText = result;
+
+        document.getElementById("confidence").innerText =
+            "Confidence: " + (data.confidence * 100).toFixed(2) + "%";
+
+        document.getElementById("details").innerText =
+            "Domain Age: " + data.domain_age_days +
+            " days | SSL: " + data.ssl;
+
+        bar.style.width = (risk * 100) + "%";
+
+        // Add to history
+        historyData.unshift({
+            url: url,
+            result: result,
+            confidence: (data.confidence * 100).toFixed(2) + "%"
+        });
+
+        updateHistory();
+
+    })
+    .catch(() => {
+        document.getElementById("status").innerText = "Error connecting to API";
+    });
+}
+
+function updateHistory() {
+    let table = document.getElementById("historyTable");
+    table.innerHTML = "";
+
+    historyData.slice(0,5).forEach(item => {
+        let row = `<tr>
+            <td>${item.url}</td>
+            <td>${item.result}</td>
+            <td>${item.confidence}</td>
+        </tr>`;
+        table.innerHTML += row;
+    });
+}
+
+// Enter key support
+document.getElementById("url").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") scan();
+});
+
+</script>
+
+</body>
+</html>

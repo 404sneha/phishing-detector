@@ -1,0 +1,5 @@
+url,label,url_length,num_dots,num_hyphens,num_slashes,num_at,has_https,has_ip,suspicious_words
+https://www.google.com,0,22,2,0,2,0,1,0,0
+https://www.facebook.com,0,24,2,0,2,0,1,0,0
+http://login-secure-bank.xyz,1,28,1,2,2,0,0,0,3
+http://verify-paypal-account.ru,1,31,1,2,2,0,0,0,2
